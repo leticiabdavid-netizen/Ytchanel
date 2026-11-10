@@ -1,5 +1,8 @@
-// Exporta a animação para MP4 (1280x720, 30 fps), quadro a quadro.
-// Uso: node render.js [pasta-de-quadros] [saida.mp4]
+// Exporta a animação para MP4 (30 fps), quadro a quadro.
+// Uso:
+//   node render.js                 -> horizontal 16:9, 1280x720  (video/tres-amigas-ep1.mp4)
+//   node render.js vertical        -> vertical 9:16, 1080x1920   (video/tres-amigas-ep1-vertical.mp4)
+//   node render.js <formato> <pasta-de-quadros> <saida.mp4>
 // Requer: Playwright (Chromium) e ffmpeg instalados.
 const { chromium } = require('playwright');
 const { execFileSync } = require('child_process');
@@ -7,15 +10,19 @@ const fs = require('fs');
 const path = require('path');
 
 const FPS = 30;
-const framesDir = path.resolve(process.argv[2] || 'frames');
-const out = path.resolve(process.argv[3] || 'video/tres-amigas-ep1.mp4');
+const vertical = process.argv[2] === 'vertical';
+const framesDir = path.resolve(process.argv[3] || (vertical ? 'frames-vertical' : 'frames'));
+const out = path.resolve(process.argv[4] ||
+  path.join(__dirname, 'video', vertical ? 'tres-amigas-ep1-vertical.mp4' : 'tres-amigas-ep1.mp4'));
 
 (async () => {
   fs.mkdirSync(framesDir, { recursive: true });
   fs.mkdirSync(path.dirname(out), { recursive: true });
   const browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-  await page.goto('file://' + path.join(__dirname, 'index.html') + '?render');
+  const page = await browser.newPage(vertical
+    ? { viewport: { width: 720, height: 1280 }, deviceScaleFactor: 1.5 }   // 1080x1920
+    : { viewport: { width: 1280, height: 720 } });
+  await page.goto('file://' + path.join(__dirname, 'index.html') + '?render' + (vertical ? '&formato=vertical' : ''));
   await page.evaluate(() => document.fonts.ready);
   const total = await page.evaluate(() => window.TOTAL);
   const n = Math.round(total * FPS);

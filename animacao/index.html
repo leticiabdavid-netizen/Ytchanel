@@ -55,6 +55,16 @@
   body.render main { padding: 0; max-width: none; }
   body.render h1, body.render p.sub, body.render .controls { display: none; }
   body.render .stage { width: 1280px; height: 720px; border-radius: 0; box-shadow: none; }
+  body.vertical .stage { aspect-ratio: 9 / 16; max-width: 420px; margin: 0 auto; }
+  body.vertical .controls { max-width: 420px; margin-left: auto; margin-right: auto; }
+  body.render.vertical .stage { width: 720px; height: 1280px; max-width: none; }
+  .formats { display: flex; gap: 8px; margin: 0 0 14px; flex-wrap: wrap; }
+  .formats a {
+    text-decoration: none; font-weight: 800; padding: 4px 14px; border-radius: 999px;
+    border: 2px solid var(--line); color: var(--ink); background: var(--panel);
+  }
+  .formats a[aria-current="page"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  body.render .formats { display: none; }
 
   /* ---------- SVG animation keyframes ---------- */
   svg text { font-family: 'Baloo 2', 'DejaVu Sans', sans-serif; font-weight: 800; }
@@ -146,6 +156,9 @@
     0% { opacity: 0 } 15% { opacity: 1 } 30% { opacity: .55 } 45% { opacity: 1 }
     60% { opacity: .55 } 75% { opacity: 1 } 100% { opacity: 0 }
   }
+  @keyframes exitL     { to { transform: translateX(-900px) } }
+  @keyframes exitR     { to { transform: translateX(900px) } }
+  @keyframes exitPop   { 0% { transform: scale(1); opacity: 1 } 30% { transform: scale(1.08); opacity: 1 } 100% { transform: scale(0); opacity: 0 } }
   @keyframes drift     { 0%,100% { transform: translateX(-24px) } 50% { transform: translateX(24px) } }
 </style>
 </head>
@@ -153,6 +166,10 @@
 <main>
   <h1>Laisa, Louise &amp; Letícia</h1>
   <p class="sub">Episódio 1 · As Três Amigas Mágicas — animação de 34 segundos</p>
+  <nav class="formats" aria-label="Formato">
+    <a href="?" id="fmtH">Horizontal 16:9 (YouTube)</a>
+    <a href="?formato=vertical" id="fmtV">Vertical 9:16 (Shorts / Reels)</a>
+  </nav>
   <div class="stage"><svg id="svg" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" aria-label="Animação das personagens Laisa, Louise e Letícia"></svg></div>
   <div class="controls">
     <button id="play">Pausar</button>
@@ -281,8 +298,8 @@ function overalls(o) {
   return `
     <path d="M 118 336 L 134 412" stroke="${o.overall}" stroke-width="24"/>
     <path d="M 242 336 L 226 412" stroke="${o.overall}" stroke-width="24"/>
-    <path d="M 116 404 L 244 404 L 254 680 L 106 680 Z" fill="${o.overall}" stroke="${o.overall}" stroke-width="10" stroke-linejoin="round"/>
-    <path d="M 124 412 L 236 412 L 245 680 M 115 680 L 124 412" fill="none" stroke="${o.overallDark}" stroke-width="2.5" stroke-dasharray="6 6"/>
+    <path d="M 116 404 L 244 404 L 258 1100 L 102 1100 Z" fill="${o.overall}" stroke="${o.overall}" stroke-width="10" stroke-linejoin="round"/>
+    <path d="M 124 412 L 236 412 L 249 1100 M 111 1100 L 124 412" fill="none" stroke="${o.overallDark}" stroke-width="2.5" stroke-dasharray="6 6"/>
     <rect x="148" y="432" width="64" height="56" rx="9" fill="${o.overall}" stroke="${o.overallDark}" stroke-width="3"/>
     <path d="M 148 446 L 212 446" stroke="${o.overallDark}" stroke-width="3"/>
     <circle cx="133" cy="410" r="9" fill="${o.overallDark}" stroke="#fff" stroke-opacity=".6" stroke-width="2"/>
@@ -335,7 +352,7 @@ function character(id, x, cfg) {
   const body = `
     <g ${st('180px 300px', tilt)}><g ${st('180px 210px', anim('sway', 3.4, tiltDelay, 'infinite'))}>${hairBack(o)}</g></g>
     <rect x="152" y="268" width="56" height="80" rx="14" fill="${o.shade}"/>
-    <path d="M 68 680 L 74 420 C 76 366 110 336 146 330 L 214 330 C 250 336 284 366 286 420 L 292 680 Z" fill="${o.shirt}"/>
+    <path d="M 66 1100 L 74 420 C 76 366 110 336 146 330 L 214 330 C 250 336 284 366 286 420 L 294 1100 Z" fill="${o.shirt}"/>
     <path d="M 148 330 Q 180 360 212 330 Z" fill="${o.shade}"/>
     ${o.trim ? `<path d="M 144 331 Q 180 364 216 331" fill="none" stroke="${o.trim}" stroke-width="8" stroke-linecap="round"/>` : ''}
     ${o.type === 'long' ? overalls(o) : teddy()}
@@ -354,16 +371,18 @@ function character(id, x, cfg) {
   if (cfg.enter === 'walkL') enter = st('0 0', anim('walkInL', 2, cfg.enterT, 1, 'backwards', 'cubic-bezier(.2,.7,.3,1)'));
   if (cfg.enter === 'hopR')  enter = st('0 0', anim('hopInR', 2, cfg.enterT, 1, 'backwards', 'linear'));
   if (cfg.enter === 'magic') enter = st('180px 430px', anim('magicIn', 1.2, cfg.enterT, 1, 'backwards', 'ease-out'));
+  const exit = cfg.exit ? st('180px 430px', anim(cfg.exit.name, 0.6, cfg.exit.t, 1, 'forwards', 'ease-in')) : '';
+  const sc = cfg.scale ?? 0.9, ty = cfg.y ?? 182;
 
   const walk = cfg.enter === 'walkL'
     ? st('0 0', anim('walkBounce', 0.4, cfg.enterT, 5, 'none', 'ease-in-out'))
     : '';
 
-  return `<g transform="translate(${x - 180 * 0.9},182) scale(0.9)">
+  return `<g transform="translate(${x - 180 * sc},${ty}) scale(${sc})"><g ${exit}>
     <g ${enter}><g ${walk}><g ${st('0 0', ...jumpAnims)}>
       <g ${st('0 0', anim('bob', 2.6, tiltDelay, 'infinite'))}>${body}</g>
     </g></g></g>
-  </g>`;
+  </g></g>`;
 }
 
 // ---------- Elementos de cena ----------
@@ -384,16 +403,17 @@ function bubble(x, y, w, h, tail, lines, color, t, dur, origin) {
   </g>`;
 }
 
-function nameTag(x, label, color, t) {
+function nameTag(x, label, color, t, y = 652, life = null) {
   const w = label.length * 22 + 50;
-  return `<g class="hidden0" ${st(`${x}px 678px`, anim('popIn', 0.6, t, 1, 'forwards', 'ease-out'))}>
-    <rect x="${x - w / 2}" y="652" width="${w}" height="52" rx="26" fill="${color}" stroke="#fff" stroke-width="4"/>
-    <text x="${x}" y="689" text-anchor="middle" font-size="34" fill="#fff">${label}</text>
+  const a = life ? anim('life', life, t, 1, 'none', 'ease-out') : anim('popIn', 0.6, t, 1, 'forwards', 'ease-out');
+  return `<g class="hidden0" ${st(`${x}px ${y + 26}px`, a)}>
+    <rect x="${x - w / 2}" y="${y}" width="${w}" height="52" rx="26" fill="${color}" stroke="#fff" stroke-width="4"/>
+    <text x="${x}" y="${y + 37}" text-anchor="middle" font-size="34" fill="#fff">${label}</text>
   </g>`;
 }
 
-function build() {
-  const svg = document.getElementById('svg');
+// Fundo, nuvens e estrelinhas (comuns aos dois formatos)
+function backdrop(W, H, clouds, twk, dots) {
   let s = `<defs>
     <linearGradient id="gTitle" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#cbb6ef"/><stop offset=".5" stop-color="#f6e7c4"/><stop offset="1" stop-color="#f9b9d6"/></linearGradient>
     <linearGradient id="gLaisa" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9c8f5"/><stop offset="1" stop-color="#b9a0e6"/></linearGradient>
@@ -405,26 +425,56 @@ function build() {
   </defs>`;
 
   // Fundos (cada cena entra por cima da anterior)
-  s += `<rect width="1280" height="720" fill="url(#gTitle)"/>`;
+  s += `<rect width="${W}" height="${H}" fill="url(#gTitle)"/>`;
   [['gLaisa', 4], ['gLouise', 11], ['gLeticia', 18], ['gAll', 26]].forEach(([g, t]) => {
-    s += `<rect width="1280" height="720" fill="url(#${g})" class="hidden0" style="animation:${anim('fadeIn', 1, t, 1, 'both', 'ease-in-out')}"/>`;
+    s += `<rect width="${W}" height="${H}" fill="url(#${g})" class="hidden0" style="animation:${anim('fadeIn', 1, t, 1, 'both', 'ease-in-out')}"/>`;
   });
 
   // Bolinhas suaves e nuvens
-  [[120, 120, 90], [1160, 160, 110], [980, 600, 140], [200, 620, 120], [640, 90, 70]].forEach(([x, y, r]) => {
+  dots.forEach(([x, y, r]) => {
     s += `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" opacity=".22"/>`;
   });
-  [[260, 110, -1], [1000, 80, -4]].forEach(([x, y, d]) => {
+  clouds.forEach(([x, y, d]) => {
     s += `<g transform="translate(${x},${y})"><g ${st('0 0', anim('drift', 9, d, 'infinite'))}>
       <ellipse cx="0" cy="0" rx="70" ry="26" fill="#fff" opacity=".75"/>
       <ellipse cx="-30" cy="-14" rx="34" ry="26" fill="#fff" opacity=".75"/>
       <ellipse cx="22" cy="-20" rx="38" ry="30" fill="#fff" opacity=".75"/></g></g>`;
   });
   // Estrelinhas piscando
-  const twk = [[80, 300], [1210, 330], [470, 60], [820, 150], [1120, 560], [60, 520], [700, 40], [380, 200], [1240, 60], [930, 300]];
   twk.forEach(([x, y], i) => {
     s += `<g transform="translate(${x},${y}) scale(${0.6 + (i % 3) * 0.25})"><path d="${STAR}" fill="#fff" ${st('0 0', anim('twinkle', 2.2 + (i % 4) * 0.4, -i * 0.37, 'infinite'))}/></g>`;
   });
+  return s;
+}
+
+function magicBurst(cx, cy) {
+  let s = `<circle cx="${cx}" cy="${cy}" r="160" fill="url(#gFlash)" class="hidden0" ${st(`${cx}px ${cy}px`, anim('flash', 1.3, 18.2, 1, 'none', 'ease-out'))}/>`;
+  for (let i = 0; i < 12; i++) {
+    const col = ['#fff3a0', '#ffffff', '#ffc2dc', '#bfe3f2'][i % 4];
+    s += `<g transform="translate(${cx},${cy}) rotate(${i * 30})"><g class="hidden0" ${st('0 0', anim('burstOut', 1.5, 18.3 + (i % 3) * 0.08, 1, 'none', 'ease-out'))}><path d="${STAR}" fill="${col}"/></g></g>`;
+  }
+  return s;
+}
+
+function heartRain(W, n) {
+  const hc = ['#f19bc1', '#8fc6dc', '#b48be0', '#f8e27a', '#ef8db0', '#ffffff'];
+  let s = '';
+  for (let i = 0; i < n; i++) {
+    const x = 20 + ((i * 397) % (W - 40));
+    const sc = 2 + (i % 4) * 0.6;
+    const dur = 3.2 + (i % 5) * 0.5;
+    const delay = 26.2 + (i % 9) * 0.35 + Math.floor(i / 9) * 0.2;
+    s += `<g transform="translate(${x},0) scale(${sc})"><g class="hidden0" ${st('0 0', anim('fall', dur * (W < 1000 ? 1.5 : 1), delay, 'infinite', 'none', 'linear'))}><path d="${HEART}" fill="${hc[i % hc.length]}" stroke="#fff" stroke-width="1"/></g></g>`;
+  }
+  return s;
+}
+
+// ---------- Formato horizontal 16:9 (YouTube) ----------
+function buildHorizontal() {
+  let s = backdrop(1280, 720,
+    [[260, 110, -1], [1000, 80, -4]],
+    [[80, 300], [1210, 330], [470, 60], [820, 150], [1120, 560], [60, 520], [700, 40], [380, 200], [1240, 60], [930, 300]],
+    [[120, 120, 90], [1160, 160, 110], [980, 600, 140], [200, 620, 120], [640, 90, 70]]);
 
   // Título (0–4s)
   s += `<g class="hidden0" ${st('640px 330px', anim('life', 4.2, 0, 1, 'none', 'ease-out'))}>
@@ -435,11 +485,7 @@ function build() {
   </g>`;
 
   // Clarão e explosão de estrelas da Letícia
-  s += `<circle cx="640" cy="440" r="160" fill="url(#gFlash)" class="hidden0" ${st('640px 440px', anim('flash', 1.3, 18.2, 1, 'none', 'ease-out'))}/>`;
-  for (let i = 0; i < 12; i++) {
-    const col = ['#fff3a0', '#ffffff', '#ffc2dc', '#bfe3f2'][i % 4];
-    s += `<g transform="translate(640,440) rotate(${i * 30})"><g class="hidden0" ${st('0 0', anim('burstOut', 1.5, 18.3 + (i % 3) * 0.08, 1, 'none', 'ease-out'))}><path d="${STAR}" fill="${col}"/></g></g>`;
-  }
+  s += magicBurst(640, 440);
 
   // Personagens
   s += character('laisa', 250, {
@@ -477,24 +523,83 @@ function build() {
   </g>`;
 
   // Chuva de corações (a partir de 26.2s)
-  const hc = ['#f19bc1', '#8fc6dc', '#b48be0', '#f8e27a', '#ef8db0', '#ffffff'];
-  for (let i = 0; i < 34; i++) {
-    const x = 20 + ((i * 397) % 1240);
-    const sc = 2 + (i % 4) * 0.6;
-    const dur = 3.2 + (i % 5) * 0.5;
-    const delay = 26.2 + (i % 9) * 0.35 + Math.floor(i / 9) * 0.2;
-    s += `<g transform="translate(${x},0) scale(${sc})"><g class="hidden0" ${st('0 0', anim('fall', dur, delay, 'infinite', 'none', 'linear'))}><path d="${HEART}" fill="${hc[i % hc.length]}" stroke="#fff" stroke-width="1"/></g></g>`;
-  }
-
-  svg.innerHTML = s;
+  s += heartRain(1280, 34);
+  return s;
 }
 
-build();
+// ---------- Formato vertical 9:16 (Shorts / Reels / TikTok) ----------
+// Cada personagem aparece sozinha e grande; no final as três se juntam.
+// Textos ficam longe das bordas de baixo e da direita (onde ficam os botões do app).
+function buildVertical() {
+  const SOLO = { scale: 1.4, y: 360 };
+  let s = backdrop(720, 1280,
+    [[170, 120, -1], [560, 230, -4], [150, 1000, -6]],
+    [[60, 300], [660, 420], [300, 80], [620, 120], [80, 760], [650, 860], [420, 1180], [90, 1180], [380, 560], [600, 640]],
+    [[100, 180, 90], [640, 360, 110], [620, 1080, 140], [80, 940, 120], [380, 60, 70]]);
+
+  // Título (0–4s)
+  s += `<g class="hidden0" ${st('360px 560px', anim('life', 4.2, 0, 1, 'none', 'ease-out'))}>
+    <text x="360" y="470" text-anchor="middle" font-size="112" fill="#fff" stroke="#8b5cc7" stroke-width="14" paint-order="stroke" stroke-linejoin="round">Laisa,</text>
+    <text x="360" y="580" text-anchor="middle" font-size="112" fill="#fff" stroke="#e7b93b" stroke-width="14" paint-order="stroke" stroke-linejoin="round">Louise</text>
+    <text x="360" y="690" text-anchor="middle" font-size="112" fill="#fff" stroke="#e46d9f" stroke-width="14" paint-order="stroke" stroke-linejoin="round">&amp; Letícia</text>
+    <text x="360" y="770" text-anchor="middle" font-size="36" fill="#6b4a9a">Episódio 1 · As Três Amigas Mágicas</text>
+    <circle cx="300" cy="830" r="14" fill="#8fc6dc"/><circle cx="360" cy="830" r="14" fill="#ef8db0"/><circle cx="420" cy="830" r="14" fill="#b07a4a"/>
+  </g>`;
+
+  s += magicBurst(360, 640);
+
+  // Cenas solo (personagem grande no centro)
+  s += character('laisa', 360, { ...SOLO, enter: 'walkL', enterT: 4, talk: [[6.3, 2.6]], wave: { arm: 'R', t: 6.1 }, exit: { name: 'exitL', t: 10.4 } });
+  s += character('louise', 360, { ...SOLO, enter: 'hopR', enterT: 11, talk: [[13.3, 2.6]], wave: { arm: 'L', t: 13.1 }, exit: { name: 'exitR', t: 17.4 } });
+  s += character('leticia', 360, { ...SOLO, enter: 'magic', enterT: 18.5, talk: [[20.3, 2.9]], hug: 20.1, exit: { name: 'exitPop', t: 25.4 } });
+
+  // Final: as três juntas (Letícia atrás no meio, Laisa e Louise na frente)
+  const back = { scale: 0.8, y: 464, enter: 'magic', jump: 26.2, armsUp: [26.2], talk: [[26.6, 1.4]] };
+  const front = { scale: 0.8, y: 760, enter: 'magic', jump: 26.2, armsUp: [26.2], talk: [[26.6, 1.4]] };
+  s += character('leticia', 360, { ...back, enterT: 25.6 });
+  s += character('laisa', 196, { ...front, enterT: 25.75 });
+  s += character('louise', 524, { ...front, enterT: 25.9 });
+
+  // Nomes (solo) e nomes finais
+  s += nameTag(360, 'Laisa', '#9b72d4', 5.6, 1010, 4.8);
+  s += nameTag(360, 'Louise', '#e7b93b', 12.6, 1010, 4.8);
+  s += nameTag(360, 'Letícia', '#e46d9f', 19.6, 1010, 5.8);
+
+  // Balões de fala
+  s += bubble(50, 150, 620, 150, [330, 390, 300, 400], ['Oi! Eu sou a Laisa!', 'Bora viver uma aventura?'], '#8b5cc7', 6.2, 4.2, '320px 380px');
+  s += bubble(50, 150, 620, 150, [330, 390, 420, 400], ['E eu sou a Louise!', 'Vamos inventar uma brincadeira?'], '#d9a21f', 13.2, 4.2, '400px 380px');
+  s += bubble(50, 150, 620, 150, [330, 390, 360, 400], ['E eu sou a Letícia!', 'Um abraço deixa tudo mágico!'], '#e46d9f', 20.2, 5.0, '360px 380px');
+
+  // Faixas finais
+  s += `<g class="hidden0" ${st('360px 300px', anim('life', 4, 26.4, 1, 'none', 'ease-out'))}>
+    <rect x="50" y="210" width="620" height="180" rx="60" fill="#fff" stroke="#e46d9f" stroke-width="6"/>
+    <text x="360" y="288" text-anchor="middle" font-size="62" fill="#8b5cc7">Juntas somos</text>
+    <text x="360" y="358" text-anchor="middle" font-size="62" fill="#8b5cc7">incríveis!</text>
+  </g>`;
+  s += `<g class="hidden0" ${st('360px 300px', anim('popIn', 0.7, 30.4, 1, 'forwards', 'ease-out'))}>
+    <rect x="50" y="210" width="620" height="180" rx="60" fill="#fff" stroke="#8b5cc7" stroke-width="6"/>
+    <text x="360" y="288" text-anchor="middle" font-size="56" fill="#e46d9f">Siga para ver</text>
+    <text x="360" y="356" text-anchor="middle" font-size="56" fill="#e46d9f">mais aventuras!</text>
+  </g>`;
+
+  s += heartRain(720, 26);
+  return s;
+}
+
+// ---------- Escolha do formato ----------
+const params = new URLSearchParams(location.search);
+const VERTICAL = params.get('formato') === 'vertical';
+const svgEl = document.getElementById('svg');
+if (VERTICAL) {
+  document.body.classList.add('vertical');
+  svgEl.setAttribute('viewBox', '0 0 720 1280');
+}
+svgEl.innerHTML = VERTICAL ? buildVertical() : buildHorizontal();
 
 // ---------- Controles (WAAPI) ----------
-const params = new URLSearchParams(location.search);
 const RENDER = params.has('render');
 if (RENDER) document.body.classList.add('render');
+document.getElementById(VERTICAL ? 'fmtV' : 'fmtH').setAttribute('aria-current', 'page');
 
 const all = () => document.getAnimations();
 // Define o tempo global (em segundos) de toda a animação
